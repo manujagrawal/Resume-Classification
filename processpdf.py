@@ -7,9 +7,10 @@ import fileinput, string, pickle, os
 import nltk, numpy as np
 from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestRegressor
 from sklearn.externals import joblib
 import pandas as pd
+import csv
 
 stop = stopwords.words('english')
 stop_words = {}
@@ -60,36 +61,42 @@ def remove_stop_words(text):
 
 if __name__ == "__main__":
     try:
-        train = pd.read_csv("CVs/cs/cs", header=0, delimiter=",")
-        print(train.shape)
         cvs_text = []
-        pdfs = os.listdir('CVs/cs')
-        for pdf in pdfs:
-            if pdf.endswith('pdf'):
-                text = convert_pdf_to_txt('CVs/cs/'+pdf)
-                processed_text = remove_stop_words(text)
-                cvs_text.append(processed_text)
-        # text = convert_pdf_to_txt('resume.pdf')
-        # processed_text = remove_stop_words(text)
-        # cvs_text.append(processed_text)
         vectorizer = CountVectorizer(analyzer="word", \
-                             tokenizer=None, \
-                             preprocessor=None, \
-                             stop_words='english', \
-                             max_features=5000)
-        train_data_features = vectorizer.fit_transform(cvs_text)
-        train_data_features = train_data_features.toarray()
-        vocab = vectorizer.get_feature_names()
-        dist = np.sum(train_data_features, axis=0)
-        for tag, count in zip(vocab, dist):
-            global_word_count[tag] = count
-        #print(sorted(global_word_count.items(), key=lambda x:x[1], reverse=True))
-        forest = RandomForestClassifier(n_estimators = 100)
-        forest = forest.fit(train_data_features, train["vector"])
-        # joblib.dump(forest, "random.pkl")
-        # if len(sys.argv) > 1 and sys.argv[1] == "train":
-        #     forest_predictor = joblib.load("random.pkl")
-        # if len(sys.argv) > 1 and sys.argv[1] == "demo":
-        #     forest_predictor = joblib.load("random.pkl")
+                                 tokenizer=None, \
+                                 preprocessor=None, \
+                                 stop_words='english', \
+                                 max_features=5000)
+        dirs = os.listdir('CVs')
+        print(dirs)
+        for folder in dirs:
+            train = []
+            f = open('CVs/'+folder+'/'+folder)
+            reader = csv.reader(f, delimiter=',')
+            next(reader)
+            for row in reader:
+                df = row[1:8]
+                train.append(df)
+            pdfs = os.listdir('CVs/'+folder)
+            print(pdfs)
+            for pdf in pdfs:
+                if pdf.endswith('pdf'):
+                    text = convert_pdf_to_txt('CVs/'+folder+'/'+pdf)
+                    processed_text = remove_stop_words(text)
+                    cvs_text.append(processed_text)
+            train_data_features = vectorizer.fit_transform(cvs_text)
+            train_data_features = train_data_features.toarray()
+            vocab = vectorizer.get_feature_names()
+            dist = np.sum(train_data_features, axis=0)
+            for tag, count in zip(vocab, dist):
+                global_word_count[tag] = count
+            forest = RandomForestRegressor(n_estimators = 100)
+            forest = forest.fit(train_data_features, *train)
+            # joblib.dump(forest, "random.pkl")
+            # if len(sys.argv) > 1 and sys.argv[1] == "train":
+            #     forest_predictor = joblib.load("random.pkl")
+            # if len(sys.argv) > 1 and sys.argv[1] == "demo":
+            #     forest_predictor = joblib.load("random.pkl")
+        print(sorted(global_word_count.items(), key=lambda x:x[1]))
     except IOError:
         pass
