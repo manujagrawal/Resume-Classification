@@ -3,7 +3,7 @@ from pdfminer.converter import TextConverter
 from pdfminer.layout import LAParams
 from pdfminer.pdfpage import PDFPage
 from cStringIO import StringIO
-import fileinput, string, pickle, os
+import fileinput, string, pickle, os, natsort
 import nltk, numpy as np
 from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import CountVectorizer
@@ -61,7 +61,6 @@ def remove_stop_words(text):
 
 if __name__ == "__main__":
     try:
-        cvs_text = []
         vectorizer = CountVectorizer(analyzer="word", \
                                  tokenizer=None, \
                                  preprocessor=None, \
@@ -71,13 +70,14 @@ if __name__ == "__main__":
         print(dirs)
         for folder in dirs:
             train = []
-            f = open('CVs/'+folder+'/'+folder)
+            cvs_text = []
+            f = open('CVs/'+folder+'/'+folder+'.csv')
             reader = csv.reader(f, delimiter=',')
-            next(reader)
             for row in reader:
                 df = row[1:8]
                 train.append(df)
-            pdfs = os.listdir('CVs/'+folder)
+            train = np.array(train)
+            pdfs = natsort.natsorted(os.listdir('CVs/'+folder))
             print(pdfs)
             for pdf in pdfs:
                 if pdf.endswith('pdf'):
@@ -91,7 +91,8 @@ if __name__ == "__main__":
             for tag, count in zip(vocab, dist):
                 global_word_count[tag] = count
             forest = RandomForestRegressor(n_estimators = 100)
-            forest = forest.fit(train_data_features, *train)
+            print(train.shape, train_data_features.shape)
+            forest = forest.fit(train_data_features, train)
             # joblib.dump(forest, "random.pkl")
             # if len(sys.argv) > 1 and sys.argv[1] == "train":
             #     forest_predictor = joblib.load("random.pkl")
